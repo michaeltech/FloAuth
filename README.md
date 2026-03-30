@@ -163,14 +163,15 @@ https://example.org?floauth=pages&id=123&username=john.doe%40email.com&firstname
 
 ### Parameters
 
-- `floauth`: Can be used as a flag (for admin login) or with a value `pages` for regular users.
-- `id`: Person's ID in FloMembers
-- `username`: Person's email
+- `address`, `extraaddress`, `postoffice`, `postcode`, `mobile`, `phone`: Contact details
 - `firstname`: Person's first name
+- `floauth`: Can be used as a flag (for admin login) or with a value `pages` for regular users.
+- `forum`: Forum parameter (optional)
+- `groups`: Comma-separated group IDs
+- `hash`: Security hash (MD5 of secret key + email)
+- `id`: Person's ID in FloMembers
+- `ismember`: `1` if member or admin, otherwise `0`
 - `lastname`: Person's last name
 - `role`: Person's role (`admin` or `member`)
-- `groups`: Comma-separated group IDs
-- `ismember`: `1` if member or admin, otherwise `0`
-- `hash`: Security hash (MD5 of secret key + email)
-- `address`, `extraaddress`, `postoffice`, `postcode`, `mobile`, `phone`: Contact details
-- `forum`: Forum parameter (optional)
+- `roles`: Comma-separated role IDs
+- `username`: Person's email
