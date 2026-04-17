@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: FloAuth
- * Version: 1.0.6
+ * Version: 1.0.7
  * Description: FloMembers authentication plugin
  * Author: Flo Apps Ltd
  * Author URI: https://floapps.com
