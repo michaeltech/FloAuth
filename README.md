@@ -9,6 +9,7 @@ FloAuth is a WordPress plugin for bridging FloMembers membership management and 
 * Extranet (pages restricted to logged-in users only, **optional**)
   * Restricts access to extranet page and its children
   * Removes extranet pages from search results
+  * Optional: restrict **posts** by category tree (parent categories plus subcategories), enabled only via filters in `functions.php` — same capability rules as pages; restricted posts are omitted from the **main** blog home, post archives (category, tag, author, date), **search**, and **RSS/Atom feeds** for visitors without access (singular URLs still redirect; some theme blocks/widgets use separate queries and are not covered)
 * Hides WordPress toolbar from Subscribers
 
 ## Installation
@@ -114,6 +115,25 @@ function custom_restrict_extranet_pages_capability( $capability ) {
 }
 add_filter( 'floauth_restrict_extranet_pages_capability', 'custom_restrict_extranet_pages_capability' );
 ```
+
+### Extranet: restrict posts by category (optional)
+
+By default, only the **Extranet path** setting (pages and child pages) applies. To also protect **standard WordPress posts** that belong to a category and its subcategories, enable the feature and return the **root** category term IDs (numeric `term_id` values from **Posts → Categories** in the admin, or from the REST API / database).
+
+Restrictions use the same capability as pages (`floauth_restrict_extranet_pages_capability`, default `read`). Visitors without that access are **redirected** away from singular posts in those categories and from **category archive** URLs for those terms. They also do **not** see those posts in the **main** blog/feed listing queries: home, typical post archives, **search**, and **RSS/Atom**. Custom blocks or widgets that run their own `WP_Query` may still list titles unless the theme adjusts them.
+
+```php
+add_filter( 'floauth_extranet_restrict_posts_by_category', '__return_true' );
+
+function my_site_floauth_extranet_restricted_category_ids() {
+	// One or more parent category term IDs; all descendant categories are included.
+	return array( 12, 34 );
+}
+add_filter( 'floauth_extranet_restricted_category_ids', 'my_site_floauth_extranet_restricted_category_ids' );
+```
+
+This does not add fields to the FloAuth settings screen; it keeps the UI unchanged for other sites.
+
 More info on WordPress [Roles and Capabilities](https://wordpress.org/support/article/roles-and-capabilities/)
 
 ### Keep WordPress toolbar always visible
