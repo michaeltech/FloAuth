@@ -65,20 +65,53 @@ function floauth_get_extranet_restricted_category_term_ids() {
 		return array_values( array_unique( array_filter( array_map( 'intval', $cached['term_ids'] ) ) ) );
 	}
 
-	$all = array();
-	foreach ( $roots as $root_id ) {
-		$term = get_term( $root_id, 'category' );
-		if ( $term instanceof WP_Term && ! is_wp_error( $term ) ) {
-			$all[] = (int) $term->term_id;
+	$term_parent_map = get_terms(
+		array(
+			'taxonomy'   => 'category',
+			'hide_empty' => false,
+			'fields'     => 'id=>parent',
+		)
+	);
+	if ( is_wp_error( $term_parent_map ) || ! is_array( $term_parent_map ) ) {
+		return array();
+	}
+
+	$children_by_parent = array();
+	foreach ( $term_parent_map as $term_id => $parent_id ) {
+		$term_id   = (int) $term_id;
+		$parent_id = (int) $parent_id;
+		if ( ! isset( $children_by_parent[ $parent_id ] ) ) {
+			$children_by_parent[ $parent_id ] = array();
 		}
-		$children = get_term_children( $root_id, 'category' );
-		if ( ! is_wp_error( $children ) && is_array( $children ) ) {
-			foreach ( $children as $child_id ) {
-				$all[] = (int) $child_id;
+		$children_by_parent[ $parent_id ][] = $term_id;
+	}
+
+	$pending  = array();
+	$seen     = array();
+	$term_ids = array();
+	foreach ( $roots as $root_id ) {
+		if ( isset( $term_parent_map[ (string) $root_id ] ) || isset( $term_parent_map[ $root_id ] ) ) {
+			$pending[] = (int) $root_id;
+		}
+	}
+
+	while ( ! empty( $pending ) ) {
+		$current = array_pop( $pending );
+		if ( isset( $seen[ $current ] ) ) {
+			continue;
+		}
+		$seen[ $current ] = true;
+		$term_ids[]       = $current;
+		if ( isset( $children_by_parent[ $current ] ) ) {
+			foreach ( $children_by_parent[ $current ] as $child_id ) {
+				if ( ! isset( $seen[ $child_id ] ) ) {
+					$pending[] = (int) $child_id;
+				}
 			}
 		}
 	}
-	$term_ids = array_values( array_unique( array_filter( $all ) ) );
+
+	$term_ids = array_values( array_unique( array_filter( $term_ids ) ) );
 	set_transient(
 		'floauth_extranet_restricted_category_term_ids',
 		array(
