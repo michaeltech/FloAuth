@@ -254,17 +254,10 @@ function floauth_filter_pre_get_posts( $query ) {
 			if ( ! is_array( $not_in ) ) {
 				$not_in = array();
 			}
-			$query->set(
-				'post__not_in',
-				array_values(
-					array_unique(
-						array_merge(
-							array_map( 'intval', $not_in ),
-							$restricted_page_ids
-						)
-					)
-				)
-			);
+			$existing_not_in = array_map( 'intval', $not_in );
+			$merged_not_in   = array_merge( $existing_not_in, $restricted_page_ids );
+			$unique_not_in   = array_values( array_unique( $merged_not_in ) );
+			$query->set( 'post__not_in', $unique_not_in );
 		}
 	}
 
