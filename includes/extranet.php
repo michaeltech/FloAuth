@@ -39,6 +39,28 @@ function floauth_get_extranet_restricted_category_root_ids() {
 }
 
 /**
+ * Normalize a list of IDs to unique, positive integers.
+ *
+ * @param mixed $ids Values to normalize.
+ * @return int[]
+ */
+function floauth_extranet_normalize_positive_ids( $ids ) {
+	if ( ! is_array( $ids ) ) {
+		return array();
+	}
+
+	$normalized = array();
+	foreach ( $ids as $id ) {
+		$id = absint( $id );
+		if ( $id > 0 ) {
+			$normalized[] = $id;
+		}
+	}
+
+	return array_values( array_unique( $normalized ) );
+}
+
+/**
  * Category term IDs that restrict posts (roots plus all descendants).
  *
  * @return int[]
@@ -62,7 +84,7 @@ function floauth_get_extranet_restricted_category_term_ids() {
 		&& $roots_hash === $cached['roots_hash']
 		&& is_array( $cached['term_ids'] )
 	) {
-		return array_values( array_unique( array_filter( array_map( 'intval', $cached['term_ids'] ) ) ) );
+		return floauth_extranet_normalize_positive_ids( $cached['term_ids'] );
 	}
 
 	$term_parent_map = get_terms(
@@ -111,7 +133,7 @@ function floauth_get_extranet_restricted_category_term_ids() {
 		}
 	}
 
-	$term_ids = array_values( array_unique( array_filter( $term_ids ) ) );
+	$term_ids = floauth_extranet_normalize_positive_ids( $term_ids );
 	set_transient(
 		'floauth_extranet_restricted_category_term_ids',
 		array(
@@ -250,13 +272,9 @@ function floauth_filter_pre_get_posts( $query ) {
 			}
 		}
 		if ( ! empty( $restricted_page_ids ) ) {
-			$not_in = $query->get( 'post__not_in' );
-			if ( ! is_array( $not_in ) ) {
-				$not_in = array();
-			}
-			$existing_not_in = array_map( 'intval', $not_in );
+			$existing_not_in = floauth_extranet_normalize_positive_ids( $query->get( 'post__not_in' ) );
 			$merged_not_in   = array_merge( $existing_not_in, $restricted_page_ids );
-			$unique_not_in   = array_values( array_unique( $merged_not_in ) );
+			$unique_not_in   = floauth_extranet_normalize_positive_ids( $merged_not_in );
 			$query->set( 'post__not_in', $unique_not_in );
 		}
 	}
