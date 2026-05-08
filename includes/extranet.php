@@ -45,26 +45,82 @@ function floauth_get_extranet_restricted_category_root_ids() {
  */
 function floauth_get_extranet_restricted_category_term_ids() {
 	if ( ! floauth_extranet_restrict_posts_by_category_enabled() ) {
+		delete_transient( 'floauth_extranet_restricted_category_term_ids' );
 		return array();
 	}
 	$roots = floauth_get_extranet_restricted_category_root_ids();
 	if ( empty( $roots ) ) {
+		delete_transient( 'floauth_extranet_restricted_category_term_ids' );
 		return array();
 	}
-	$all = array();
-	foreach ( $roots as $root_id ) {
-		$term = get_term( $root_id, 'category' );
-		if ( $term instanceof WP_Term && ! is_wp_error( $term ) ) {
-			$all[] = (int) $term->term_id;
+
+	$roots_hash = md5( wp_json_encode( $roots ) );
+	$cached     = get_transient( 'floauth_extranet_restricted_category_term_ids' );
+	if (
+		is_array( $cached )
+		&& isset( $cached['roots_hash'], $cached['term_ids'] )
+		&& $roots_hash === $cached['roots_hash']
+		&& is_array( $cached['term_ids'] )
+	) {
+		return array_values( array_unique( array_filter( array_map( 'intval', $cached['term_ids'] ) ) ) );
+	}
+
+	$term_parent_map = get_terms(
+		array(
+			'taxonomy'   => 'category',
+			'hide_empty' => false,
+			'fields'     => 'id=>parent',
+		)
+	);
+	if ( is_wp_error( $term_parent_map ) || ! is_array( $term_parent_map ) ) {
+		return array();
+	}
+
+	$children_by_parent = array();
+	foreach ( $term_parent_map as $term_id => $parent_id ) {
+		$term_id   = (int) $term_id;
+		$parent_id = (int) $parent_id;
+		if ( ! isset( $children_by_parent[ $parent_id ] ) ) {
+			$children_by_parent[ $parent_id ] = array();
 		}
-		$children = get_term_children( $root_id, 'category' );
-		if ( ! is_wp_error( $children ) && is_array( $children ) ) {
-			foreach ( $children as $child_id ) {
-				$all[] = (int) $child_id;
+		$children_by_parent[ $parent_id ][] = $term_id;
+	}
+
+	$pending  = array();
+	$seen     = array();
+	$term_ids = array();
+	foreach ( $roots as $root_id ) {
+		if ( isset( $term_parent_map[ (string) $root_id ] ) || isset( $term_parent_map[ $root_id ] ) ) {
+			$pending[] = (int) $root_id;
+		}
+	}
+
+	while ( ! empty( $pending ) ) {
+		$current = array_pop( $pending );
+		if ( isset( $seen[ $current ] ) ) {
+			continue;
+		}
+		$seen[ $current ] = true;
+		$term_ids[]       = $current;
+		if ( isset( $children_by_parent[ $current ] ) ) {
+			foreach ( $children_by_parent[ $current ] as $child_id ) {
+				if ( ! isset( $seen[ $child_id ] ) ) {
+					$pending[] = (int) $child_id;
+				}
 			}
 		}
 	}
-	return array_values( array_unique( array_filter( $all ) ) );
+
+	$term_ids = array_values( array_unique( array_filter( $term_ids ) ) );
+	set_transient(
+		'floauth_extranet_restricted_category_term_ids',
+		array(
+			'roots_hash' => $roots_hash,
+			'term_ids'   => $term_ids,
+		),
+		HOUR_IN_SECONDS
+	);
+	return $term_ids;
 }
 
 /**
@@ -198,17 +254,10 @@ function floauth_filter_pre_get_posts( $query ) {
 			if ( ! is_array( $not_in ) ) {
 				$not_in = array();
 			}
-			$query->set(
-				'post__not_in',
-				array_values(
-					array_unique(
-						array_merge(
-							array_map( 'intval', $not_in ),
-							$restricted_page_ids
-						)
-					)
-				)
-			);
+			$existing_not_in = array_map( 'intval', $not_in );
+			$merged_not_in   = array_merge( $existing_not_in, $restricted_page_ids );
+			$unique_not_in   = array_values( array_unique( $merged_not_in ) );
+			$query->set( 'post__not_in', $unique_not_in );
 		}
 	}
 
@@ -314,3 +363,15 @@ function floauth_clear_extranet_transient( $old_value, $new_value ) {
 	delete_transient( 'floauth_extranet_post_id' );
 }
 add_action( 'update_option_floauth_extranet_path', 'floauth_clear_extranet_transient', 10, 2 );
+
+/**
+ * Clear restricted category term IDs transient.
+ *
+ * @return void
+ */
+function floauth_clear_extranet_restricted_category_term_ids_transient() {
+	delete_transient( 'floauth_extranet_restricted_category_term_ids' );
+}
+add_action( 'created_category', 'floauth_clear_extranet_restricted_category_term_ids_transient' );
+add_action( 'edited_category', 'floauth_clear_extranet_restricted_category_term_ids_transient' );
+add_action( 'delete_category', 'floauth_clear_extranet_restricted_category_term_ids_transient' );

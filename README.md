@@ -116,7 +116,9 @@ function custom_restrict_extranet_pages_capability( $capability ) {
 add_filter( 'floauth_restrict_extranet_pages_capability', 'custom_restrict_extranet_pages_capability' );
 ```
 
-### Extranet: restrict posts by category (optional)
+More info on WordPress [Roles and Capabilities](https://wordpress.org/support/article/roles-and-capabilities/)
+
+### Restrict posts by category
 
 By default, only the **Extranet path** setting (pages and child pages) applies. To also protect **standard WordPress posts** that belong to a category and its subcategories, enable the feature and return the **root** category term IDs (numeric `term_id` values from **Posts → Categories** in the admin, or from the REST API / database).
 
@@ -133,8 +135,6 @@ add_filter( 'floauth_extranet_restricted_category_ids', 'my_site_floauth_extrane
 ```
 
 This does not add fields to the FloAuth settings screen; it keeps the UI unchanged for other sites.
-
-More info on WordPress [Roles and Capabilities](https://wordpress.org/support/article/roles-and-capabilities/)
 
 ### Keep WordPress toolbar always visible
 
