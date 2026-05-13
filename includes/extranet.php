@@ -25,17 +25,7 @@ function floauth_extranet_restrict_posts_by_category_enabled() {
  */
 function floauth_get_extranet_restricted_category_root_ids() {
 	$ids = apply_filters( 'floauth_extranet_restricted_category_ids', array() );
-	if ( ! is_array( $ids ) ) {
-		return array();
-	}
-	$out = array();
-	foreach ( $ids as $id ) {
-		$id = absint( $id );
-		if ( $id > 0 ) {
-			$out[] = $id;
-		}
-	}
-	return array_values( array_unique( $out ) );
+	return floauth_extranet_normalize_positive_ids( $ids );
 }
 
 /**
